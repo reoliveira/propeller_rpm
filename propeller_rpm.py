@@ -8,6 +8,7 @@ MARKER_SIZE = 5
 MILESTONES = [.25, .5, .75, 1.0]
 
 def get_color_bounds():
+    # BGR order
     return ([10, 10, 100], [80, 80, 200])
 
 def weigh_pixels(pixels) :
