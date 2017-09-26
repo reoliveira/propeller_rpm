@@ -11,44 +11,44 @@ def get_color_bounds():
     return ([10, 10, 100], [80, 80, 200])
 
 def weigh_pixels(pixels) :
-    totalx = 0
-    totaly = 0
+    row = 0
+    col = 0
     count = 0
 
-    if pixels.size <= 0: return (0,0)
+    if pixels.size <= 0: return (height/2,width/2) # (row, col): height = #rows, width = #cols
 
     for pixel in np.nditer(pixels, flags = ['external_loop'], order = 'C'):
-        totalx += pixel[0]
-        totaly += pixel[1]
+        row += pixel[0]
+        col += pixel[1]
         count += 1
 
-    return (totalx/count, totaly/count)
+    return (row/count, col/count)
 
 def calculate_origin(centre, past_centres):
     if past_centres.full():
         past_centres.get(False)
     past_centres.put(centre)
 
-    totalx = 0
-    totaly = 0
+    total_row = 0
+    total_col = 0
     count = 0
-    for (x,y) in list(past_centres.queue):
-        totalx += x
-        totaly += y
+    for (row,col) in list(past_centres.queue):
+        total_row += row
+        total_col += col
         count += 1
 
-    return (totalx/count, totaly/count)
+    return (total_row/count, total_col/count)
 
 def update_frame(frame, centre, origin):
     print_blob(frame, origin)
     print_blob(frame, centre)
 
 def print_blob(frame, point):
-    for x in range(point[0]-MARKER_SIZE, point[0]+MARKER_SIZE):
-        if x >= 0 and x<width:
-            for y in range(point[1]-MARKER_SIZE, point[1]+MARKER_SIZE):
-                if y>=0 and y<height:
-                    frame[x,y] = 100
+    for r in range(point[0]-MARKER_SIZE, point[0]+MARKER_SIZE):
+        if r >= 0 and r < height:
+            for c in range(point[1]-MARKER_SIZE, point[1]+MARKER_SIZE):
+                if c >= 0 and c < width:
+                    frame[r,c] = 100 # something weird is going on here
 
 
 # ------------------- MAIN -------------------
@@ -64,11 +64,10 @@ boundaries = get_color_bounds()
 lower = np.array(boundaries[0], dtype = "uint8")
 upper = np.array(boundaries[1], dtype = "uint8")
 
-origin_q = Queue(maxsize=WINDOW_SIZE)
-
-ret,frame = cap.read()
+ret, frame = cap.read()
 height, width, channels = frame.shape
 
+origin_q = Queue(maxsize=WINDOW_SIZE)
 num_milestones = 0
 while(cap.isOpened()):
     next_milestone = MILESTONES[num_milestones % len(MILESTONES)]
