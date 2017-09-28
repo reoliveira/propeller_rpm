@@ -5,7 +5,6 @@ from Queue import *
 
 WINDOW_SIZE = 100
 MARKER_SIZE = 5
-MILESTONES = [.25, .5, .75, 1.0]
 
 def get_color_bounds():
     # BGR order
@@ -49,7 +48,23 @@ def print_blob(frame, point):
         if r >= 0 and r < height:
             for c in range(point[1]-MARKER_SIZE, point[1]+MARKER_SIZE):
                 if c >= 0 and c < width:
-                    frame[r,c] = 100 # something weird is going on here
+                    frame[r,c] = [0,255,0] # something weird is going on here
+
+def check_quadrent(point):
+    # point is (row,col) = (y,x)
+    y = point[0]
+    x = point[1]
+
+    if x >= 0:
+        if y >=0:
+            return 1
+        else:
+            return 4
+    else:
+        if y >=0:
+            return 2
+        else:
+            return 3
 
 
 # ------------------- MAIN -------------------
@@ -67,30 +82,37 @@ upper = np.array(boundaries[1], dtype = "uint8")
 
 ret, frame = cap.read()
 height, width, channels = frame.shape
+fps = int(args["fps"])
 
 origin_q = Queue(maxsize=WINDOW_SIZE)
-num_milestones = 0
+milestones = 0
+frames = 0
 while(cap.isOpened()):
-    next_milestone = MILESTONES[num_milestones % len(MILESTONES)]
+    # next_quadrent = QUADRENTS[milestones % len(QUADRENTS)]
 
     ret, frame = cap.read()
-    # split the target color from the rest of the image
+    # split out the target color
     binary = cv2.inRange(frame, lower, upper)
-    # locations of all target color pixels
     targets = np.transpose(np.where(binary>0))
-    # "centre of mass" of the targets
+    # "centre of mass" the target color for tracking
     centre = weigh_pixels(targets)
-    # calculate an approximate origin using the last WINDOW_SIZE centre points
     origin = calculate_origin(centre, origin_q)
 
-    # now use position and origin to guess angle
-    # 1) calculate angle wrt origin
-    # 2) see if it has passed the next "milestone" which is a portion of a turn
-    # 3) use milestones to count turns and compare against fps for rpm
+    # now use position and origin to check quadrent, passing all 4 quadrents counts as one rotation
+    vec = (centre[0] - origin[0], centre[1] - origin[1])
+    quadrent = check_quadrent(vec)
+
+    # this assumes we start in quadrent 1, or that the extra partial rotation until it "catches up" has little effect
+    if quadrent != (milestones % 4)+1:
+        milestones += 1
+    frames += 1 # constraint here that sys.maxint / fps does not exceed the number of seconds in the video
+
+    rpm = ((milestones / 4) / frames) * fps
 
     # print the centre point and approximated origin on the frame
-    update_frame(binary, centre, origin)
-    cv2.imshow('frame', binary)
+    update_frame(frame, centre, origin)
+    cv2.putText(frame,"rpm:" + str(rpm), (0,100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,255,0))
+    cv2.imshow('frame', frame)
     if cv2.waitKey(15) & 0xFF == ord('q'):
         break
 
