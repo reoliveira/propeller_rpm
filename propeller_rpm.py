@@ -48,7 +48,7 @@ def print_blob(frame, point):
         if r >= 0 and r < height:
             for c in range(point[1]-MARKER_SIZE, point[1]+MARKER_SIZE):
                 if c >= 0 and c < width:
-                    frame[r,c] = [0,255,0] # something weird is going on here
+                    frame[r,c] = [0,255,0]
 
 def check_quadrent(point):
     # point is (row,col) = (y,x)
@@ -88,8 +88,6 @@ origin_q = Queue(maxsize=WINDOW_SIZE)
 milestones = 0
 frames = 0
 while(cap.isOpened()):
-    # next_quadrent = QUADRENTS[milestones % len(QUADRENTS)]
-
     ret, frame = cap.read()
     # split out the target color
     binary = cv2.inRange(frame, lower, upper)
