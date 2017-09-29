@@ -105,11 +105,14 @@ while(cap.isOpened()):
         milestones += 1
     frames += 1 # constraint here that sys.maxint / fps does not exceed the number of seconds in the video
 
-    rpm = ((milestones / 4) / frames) * fps
+    # calculation currently heavily affected if there are a bunch of frames without movement, as "frames" is
+    # inc but "milestones" is not. Could do an impl where it only looks at the last x number
+    # e.g. maybe a queue of milestones and their respective frame #?
+    rpm = (float(milestones) / (4*frames)) * fps * 60 # int division problems happening here
 
     # print the centre point and approximated origin on the frame
     update_frame(frame, centre, origin)
-    cv2.putText(frame,"rpm:" + str(rpm), (0,100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,255,0))
+    cv2.putText(frame,"rpm:%.2f" % rpm, (0,100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,255,0))
     cv2.imshow('frame', frame)
     if cv2.waitKey(15) & 0xFF == ord('q'):
         break
