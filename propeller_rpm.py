@@ -8,7 +8,7 @@ MARKER_SIZE = 5
 
 def get_color_bounds():
     # BGR order
-    return ([10, 10, 100], [80, 80, 200])
+    return ([50, 50, 100], [150, 150, 200])
 
 def weigh_pixels(pixels) :
     row = 0
@@ -40,28 +40,28 @@ def calculate_origin(centre, past_centres):
     return (total_row/count, total_col/count)
 
 def update_frame(frame, centre, origin):
-    print_blob(frame, origin)
-    print_blob(frame, centre)
+    print_blob(frame, origin, [0,0,255])
+    print_blob(frame, centre, [0,255,0])
 
-def print_blob(frame, point):
+def print_blob(frame, point, color):
     for r in range(point[0]-MARKER_SIZE, point[0]+MARKER_SIZE):
         if r >= 0 and r < height:
             for c in range(point[1]-MARKER_SIZE, point[1]+MARKER_SIZE):
                 if c >= 0 and c < width:
-                    frame[r,c] = [0,255,0]
+                    frame[r,c] = color
 
-def check_quadrent(point):
+def check_quadrant(point):
     # point is (row,col) = (y,x)
     y = point[0]
     x = point[1]
 
     if x >= 0:
-        if y >=0:
+        if y <=0: # y increases towards bottom
             return 1
         else:
             return 4
     else:
-        if y >=0:
+        if y <=0:
             return 2
         else:
             return 3
@@ -85,10 +85,14 @@ height, width, channels = frame.shape
 fps = int(args["fps"])
 
 origin_q = Queue(maxsize=WINDOW_SIZE)
-milestones = 0
+rotations = 0
+cur_quad = 0
 frames = 0
 while(cap.isOpened()):
     ret, frame = cap.read()
+    if not ret: break
+    frames += 1 # constraint here that sys.maxint / fps does not exceed the number of frames in the video
+
     # split out the target color
     binary = cv2.inRange(frame, lower, upper)
     targets = np.transpose(np.where(binary>0))
@@ -96,26 +100,26 @@ while(cap.isOpened()):
     centre = weigh_pixels(targets)
     origin = calculate_origin(centre, origin_q)
 
-    # now use position and origin to check quadrent, passing all 4 quadrents counts as one rotation
+    # now use position and origin to check quadrant, passing all 4 quadrants counts as one rotation
     vec = (centre[0] - origin[0], centre[1] - origin[1])
-    quadrent = check_quadrent(vec)
+    quad = check_quadrant(vec)
+    # this assumes we start in quadrant 1, or that the extra partial rotation until it "catches up" has little effect
 
-    # this assumes we start in quadrent 1, or that the extra partial rotation until it "catches up" has little effect
-    if quadrent != (milestones % 4)+1:
-        milestones += 1
-    frames += 1 # constraint here that sys.maxint / fps does not exceed the number of seconds in the video
+    if quad == 1 :
+        if cur_quad == 4:
+            rotations += 1
 
-    # calculation currently heavily affected if there are a bunch of frames without movement, as "frames" is
-    # inc but "milestones" is not. Could do an impl where it only looks at the last x number
-    # e.g. maybe a queue of milestones and their respective frame #?
-    rpm = (float(milestones) / (4*frames)) * fps * 60 # int division problems happening here
+    cur_quad = quad
+
+    rpm = (float(rotations) / frames) * fps * 60 # int division problems happening here
 
     # print the centre point and approximated origin on the frame
     update_frame(frame, centre, origin)
     cv2.putText(frame,"rpm:%.2f" % rpm, (0,100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,255,0))
     cv2.imshow('frame', frame)
-    if cv2.waitKey(15) & 0xFF == ord('q'):
+    if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
+print("frames read: %d" % frames)
 cap.release()
 cv2.destroyAllWindows()
