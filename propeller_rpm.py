@@ -106,6 +106,11 @@ frames = 0
 frame_q = Queue(maxsize=fps * AVG_WINDOW) # use last 5 seconds to determine current rpm
 max_rpm = 0
 
+video_path = args["video"].split("/")
+video_name = video_path[len(video_path) - 1].split(".")[0] + "_rpm.avi"
+print(video_name)
+
+out = cv2.VideoWriter(video_name, cv2.VideoWriter_fourcc(*'XVID'), fps, (width,height))
 while(cap.isOpened()):
     ret, frame = cap.read()
     if not ret: break
@@ -148,11 +153,12 @@ while(cap.isOpened()):
     cv2.putText(frame,"max rpm:%.2f" % max_rpm, (0,100), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,0,255))
     cv2.putText(frame,"current rpm:%.2f" % cur_rpm, (0,150), cv2.FONT_HERSHEY_SIMPLEX, 2, (255,0,0))
     cv2.imshow('frame', frame)
-
+    out.write(frame)
 
     if cv2.waitKey(15) & 0xFF == ord('q'):
         break
 
 print("frames read: %d" % frames)
 cap.release()
+out.release()
 cv2.destroyAllWindows()
